@@ -1,4 +1,4 @@
-import { Position, iccsToMove, Move, mkMove } from './rules';
+import { Position, iccsToMove, moveToIccs, Move, mkMove } from './rules';
 import { Searcher, Level } from './ai';
 
 export interface AiReply { move: string | null; score: number; depth: number; nodes: number; ms: number }
@@ -8,6 +8,7 @@ export class AiClient {
   private worker: Worker | null = null;
   private id = 0;
   private pending = new Map<number, (r: AiReply) => void>();
+  private requests = new Map<number, { moves: string[]; level: Level; timeMs?: number }>();
   private fallback: Searcher | null = null;
   usingWorker = false;
 
@@ -18,6 +19,7 @@ export class AiClient {
         const r = this.pending.get(e.data.id);
         if (r) {
           this.pending.delete(e.data.id);
+          this.requests.delete(e.data.id);
           r(e.data);
         }
       };
@@ -25,7 +27,13 @@ export class AiClient {
         this.worker?.terminate();
         this.worker = null;
         this.usingWorker = false;
-        // resolve whatever was pending on the fallback path
+        // answer whatever was in flight on the main thread instead
+        for (const [id, resolve] of this.pending) {
+          const q = this.requests.get(id);
+          if (q) void this.think(q.moves, q.level, q.timeMs).then(resolve);
+        }
+        this.pending.clear();
+        this.requests.clear();
       };
       this.usingWorker = true;
     } catch {
@@ -38,6 +46,7 @@ export class AiClient {
     if (this.worker) {
       return new Promise((resolve) => {
         this.pending.set(id, resolve);
+        this.requests.set(id, { moves, level, timeMs });
         this.worker!.postMessage({ id, moves, level, timeMs });
       });
     }
@@ -48,7 +57,7 @@ export class AiClient {
         const pos = Position.initial();
         for (const m of moves) pos.makeMove(iccsToMove(m));
         const r = this.fallback.search(pos, { level, timeMs });
-        resolve({ move: r.move ? `${String.fromCharCode(97 + (r.move & 127) % 9)}${Math.floor((r.move & 127) / 9)}${String.fromCharCode(97 + (r.move >> 7) % 9)}${Math.floor((r.move >> 7) / 9)}` : null, score: r.score, depth: r.depth, nodes: r.nodes, ms: r.ms });
+        resolve({ move: r.move ? moveToIccs(r.move) : null, score: r.score, depth: r.depth, nodes: r.nodes, ms: r.ms });
       }, 20);
     });
   }
@@ -56,6 +65,7 @@ export class AiClient {
   /** forget any in-flight request (its reply is simply ignored) */
   cancel(): void {
     this.pending.clear();
+    this.requests.clear();
   }
 }
 

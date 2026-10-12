@@ -58,7 +58,8 @@ function glyphTexture(text: string, big: boolean): THREE.CanvasTexture {
   g.lineWidth = 5;
   const x = (W - w) / 2, y = 22, h = H - 44;
   g.beginPath();
-  g.roundRect(x, y, w, h, 18);
+  if (typeof g.roundRect === 'function') g.roundRect(x, y, w, h, 18);
+  else g.rect(x, y, w, h);
   g.fill();
   g.stroke();
   g.fillStyle = '#ffd9cc';

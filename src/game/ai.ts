@@ -3,7 +3,7 @@
  * transposition table, MVV-LVA / killer / history move ordering, check extensions and quiescence
  * search, over tuned piece-square tables. Pure TypeScript — runs inside ai.worker.ts.
  */
-import { Position, Move, PT, RED, mkMove, moveFrom, moveTo, rankOf, fileOf, NUM_SQ } from './rules';
+import { Position, Move, PT, RED, mkMove, moveFrom, moveTo, rankOf, fileOf, NUM_SQ, iccsToMove } from './rules';
 
 export type Level = 'recruit' | 'captain' | 'general' | 'master';
 
@@ -74,6 +74,31 @@ function evaluate(pos: Position): number {
   // intact defences matter when heavy pieces remain
   score += (redDef - blackDef) * 8;
   return pos.side === RED ? score : -score;
+}
+
+/* ───────────── tiny opening book (first two plies only) ───────────── */
+
+// Red's first move: 当头炮 / 中炮, 飞相, 起马, pawn pushes
+const BOOK_RED = ['h2e2', 'b2e2', 'c0e2', 'g0e2', 'h0g2', 'b0c2', 'c3c4', 'g3g4', 'h2e2', 'b2e2'];
+// Black's first reply (screen-cannon, horse development, elephants, pawn pushes)
+const BOOK_BLACK = ['b9c7', 'h9g7', 'b7e7', 'h7e7', 'c6c5', 'g6g5', 'g9e7', 'c9e7', 'h9g7', 'b9c7'];
+const QUIET_FIRST = new Set([...BOOK_RED, 'a3a4', 'i3i4', 'e3e4']);
+
+function bookMove(pos: Position): Move {
+  const n = pos.ply;
+  if (n > 1) return 0;
+  const legal = pos.legalMoves();
+  const pick = (list: string[]) => {
+    const cands = list.map(iccsToMove).filter((m) => legal.includes(m));
+    return cands.length ? cands[Math.floor(Math.random() * cands.length)] : 0;
+  };
+  if (n === 0) return pick(BOOK_RED);
+  // reply only if Red's first move was an ordinary quiet one
+  const last = pos.lastMove;
+  if (last === null) return 0;
+  const from = String.fromCharCode(97 + (moveFrom(last) % 9)) + Math.floor(moveFrom(last) / 9);
+  const to = String.fromCharCode(97 + (moveTo(last) % 9)) + Math.floor(moveTo(last) / 9);
+  return QUIET_FIRST.has(from + to) ? pick(BOOK_BLACK) : 0;
 }
 
 /* ───────────── search ───────────── */
@@ -216,6 +241,8 @@ export class Searcher {
     this.pos = pos.clone();
     this.nodes = 0;
     this.deadline = t0 + (opts.timeMs ?? L.timeMs);
+    const book = opts.level === 'recruit' ? 0 : bookMove(this.pos);
+    if (book) return { move: book, score: 0, depth: 0, nodes: 0, ms: performance.now() - t0 };
     const rootMoves = this.pos.legalMoves();
     if (!rootMoves.length) return { move: 0, score: -MATE, depth: 0, nodes: 0, ms: 0 };
     if (rootMoves.length === 1) return { move: rootMoves[0], score: 0, depth: 0, nodes: 1, ms: performance.now() - t0 };

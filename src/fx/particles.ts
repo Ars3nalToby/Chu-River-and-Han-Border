@@ -20,7 +20,7 @@ varying vec4 vColor;
 void main(){
   vColor = aColor;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = max(0.0, aSize * uScale / -mv.z);
+  gl_PointSize = clamp(aSize * uScale / -mv.z, 0.0, 200.0);
   gl_Position = projectionMatrix * mv;
 }`;
 const FRAG = /* glsl */ `
