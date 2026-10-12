@@ -85,10 +85,13 @@ export function warriorMaterial(side: 0 | 1, slot: Slot): THREE.MeshStandardMate
 
 class Parts {
   private lists: Record<Slot, THREE.BufferGeometry[]> = { statue: [], metal: [] };
+  /** translation applied to every part added while set (used to merge the head into the body mesh) */
+  offset: [number, number, number] = [0, 0, 0];
   add(slot: Slot, geo: THREE.BufferGeometry, tint: THREE.Color, o: { p?: [number, number, number]; r?: [number, number, number]; s?: [number, number, number] } = {}): this {
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(...(o.r ?? [0, 0, 0])));
-    m.compose(new THREE.Vector3(...(o.p ?? [0, 0, 0])), q, new THREE.Vector3(...(o.s ?? [1, 1, 1])));
+    const pp = o.p ?? [0, 0, 0];
+    m.compose(new THREE.Vector3(pp[0] + this.offset[0], pp[1] + this.offset[1], pp[2] + this.offset[2]), q, new THREE.Vector3(...(o.s ?? [1, 1, 1])));
     const g = geo.index ? geo : geo; // all primitives used are indexed
     g.applyMatrix4(m);
     const n = g.attributes.position.count;
@@ -211,12 +214,11 @@ function humanoid(side: 0 | 1, o: HumanoidOpts): Humanoid {
   // neck + gorget
   st.add('statue', cyl(0.032, 0.036, 0.05, 10), P.skin, { p: [0, waistY + 0.385, 0] });
   st.add('statue', torus(0.048, 0.016, 6, 14), P.accent, { p: [0, waistY + 0.37, 0], r: [Math.PI / 2, 0, 0] });
-  const staticGroup = st.mesh(side);
 
-  /* head (separate pivot so it can turn / rear) */
-  const head = new THREE.Group();
-  head.position.set(0, waistY + 0.5, 0);
-  const hd = new Parts();
+  /* head — merged into the static body mesh (one draw call fewer per statue) */
+  const head = new THREE.Group(); // kept for API symmetry; heads no longer pivot
+  const hd = st;
+  hd.offset = [0, waistY + 0.5, 0];
   hd.add('statue', sph(0.058, 16, 12), P.skin, { s: [0.92, 1.1, 0.96] });
   // brow, nose, moustache — enough for a terracotta face
   hd.add('statue', box(0.075, 0.012, 0.02), P.hair, { p: [0, 0.02, -0.052] });
@@ -256,8 +258,9 @@ function humanoid(side: 0 | 1, o: HumanoidOpts): Humanoid {
       hd.add('metal', cone(0.016, 0.05, 6), P.accent, { p: [0, 0.095, 0] });
       break;
   }
-  head.add(hd.mesh(side));
-  head.children.forEach((ch) => ((ch as THREE.Mesh).castShadow = true));
+  hd.offset = [0, 0, 0];
+
+  const staticGroup = st.mesh(side);
 
   /* arms — pivots at the shoulders, hanging down */
   const mkArm = (sx: number, withWeapon: boolean): { arm: THREE.Group; weapon: THREE.Group } => {
@@ -356,6 +359,7 @@ function humanoid(side: 0 | 1, o: HumanoidOpts): Humanoid {
     }
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05, side: THREE.DoubleSide });
+    mat.userData.own = true;
     const m = new THREE.Mesh(geo, mat);
     m.castShadow = true;
     cape.add(m);

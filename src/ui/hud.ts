@@ -411,7 +411,7 @@ export class Hud {
     toggle(t('classic'), S.classic, (v) => { S.classic = v; this.handlers.onSettings(S, 'classic'); });
     toggle(t('cinematic'), S.cinematic, (v) => { S.cinematic = v; this.handlers.onSettings(S, 'cinematic'); });
     toggle(t('faceOwn'), S.faceOwn, (v) => { S.faceOwn = v; this.handlers.onSettings(S, 'faceOwn'); });
-    toggle(t('sound') + ' · ' + (S.muted ? t('unmute') : t('mute')), !S.muted, (v) => {
+    toggle(t('sound'), !S.muted, (v) => {
       S.muted = !v;
       this.muted = S.muted;
       if (this.refs.mute) this.refs.mute.textContent = this.muted ? '🔇' : '🔊';

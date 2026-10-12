@@ -53,15 +53,15 @@ function glyphTexture(text: string, big: boolean): THREE.CanvasTexture {
   const label = text;
   g.font = big ? `600 44px ${FONT_UI}` : `64px ${FONT_BRUSH}`;
   const w = Math.min(W - 12, g.measureText(label).width + 40);
-  g.fillStyle = 'rgba(10,6,6,0.86)';
-  g.strokeStyle = '#d33a28';
-  g.lineWidth = 4;
+  g.fillStyle = 'rgba(12,6,6,0.92)';
+  g.strokeStyle = '#ff5a40';
+  g.lineWidth = 5;
   const x = (W - w) / 2, y = 22, h = H - 44;
   g.beginPath();
   g.roundRect(x, y, w, h, 18);
   g.fill();
   g.stroke();
-  g.fillStyle = '#ff6a4d';
+  g.fillStyle = '#ffd9cc';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText(label, W / 2, H / 2 + 2);
@@ -227,7 +227,7 @@ export class Highlights {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glyphTexture(text, big), transparent: true, depthTest: false, depthWrite: false, opacity: 0 }));
     sqWorld(sq, this.v);
     s.position.set(this.v.x, 1.65, this.v.z);
-    const k = scale || (big ? 1.5 : 0.62);
+    const k = scale || (big ? 1.5 : 0.8);
     s.scale.set(k * 2, k, 1);
     s.renderOrder = 60;
     this.group.add(s);

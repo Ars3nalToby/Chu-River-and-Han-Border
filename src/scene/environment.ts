@@ -182,6 +182,15 @@ function bannerTexture(char: string, kind: 'han' | 'chu'): THREE.CanvasTexture {
   return t;
 }
 
+/** gentle rolling plain; flat around the board and along the river corridor */
+export function terrainY(x: number, z: number): number {
+  const r = Math.hypot(x, z);
+  const sm = (a: number, b: number, v: number) => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const mask = sm(15, 48, r) * sm(3.5, 11, Math.abs(z));
+  const h = (fbm2(x * 0.018 + 40, z * 0.018 + 17, 4) - 0.42) * 9 + (fbm2(x * 0.06, z * 0.06, 2) - 0.5) * 1.2;
+  return GROUND_Y + Math.max(-0.4, h) * mask;
+}
+
 /* ───────────────────────────── fire ───────────────────────────── */
 
 const FLAME_VERT = /* glsl */ `
@@ -451,11 +460,15 @@ export class Environment {
 
     /* ground */
     {
+      const gg = new THREE.PlaneGeometry(900, 900, 128, 128);
+      gg.rotateX(-Math.PI / 2);
+      const gp = gg.attributes.position;
+      for (let i = 0; i < gp.count; i++) gp.setY(i, terrainY(gp.getX(i), gp.getZ(i)) - GROUND_Y);
+      gg.computeVertexNormals();
       const ground = new THREE.Mesh(
-        new THREE.CircleGeometry(420, 64),
+        gg,
         new THREE.MeshStandardMaterial({ map: groundTexture(), color: 0xffffff, roughness: 0.96, metalness: 0 }),
       );
-      ground.rotation.x = -Math.PI / 2;
       ground.position.y = GROUND_Y;
       ground.receiveShadow = true;
       g.add(ground);
@@ -475,7 +488,7 @@ export class Environment {
       for (let i = 0; i < N; i++) {
         const a = r() * Math.PI * 2;
         const rad = 15 + r() * 40;
-        p.set(Math.cos(a) * rad, GROUND_Y - 0.15, Math.sin(a) * rad);
+        p.set(Math.cos(a) * rad, terrainY(Math.cos(a) * rad, Math.sin(a) * rad) - 0.15, Math.sin(a) * rad);
         e.set((r() - 0.5) * 0.35, r() * 6, (r() - 0.5) * 0.35);
         q.setFromEuler(e);
         s.setScalar(0.8 + r() * 0.6);
@@ -498,7 +511,7 @@ export class Environment {
         const a = r() * Math.PI * 2;
         const rad = 12 + r() * 60;
         const sc = 0.4 + r() * r() * 2.6;
-        p.set(Math.cos(a) * rad, GROUND_Y + sc * 0.2, Math.sin(a) * rad);
+        p.set(Math.cos(a) * rad, terrainY(Math.cos(a) * rad, Math.sin(a) * rad) + sc * 0.2, Math.sin(a) * rad);
         q.setFromEuler(e.set(r() * 3, r() * 6, r() * 3));
         m4.compose(p, q, s.set(sc * (1 + r() * 0.6), sc, sc * (1 + r() * 0.6)));
         rocks.setMatrixAt(i, m4);
@@ -506,6 +519,38 @@ export class Environment {
       rocks.castShadow = true;
       rocks.receiveShadow = true;
       g.add(rocks);
+    }
+
+    /* distant camps: tents + campfires. Warm and busy behind Red, sparse and cold behind Black */
+    {
+      const r = mulberry32(303);
+      const tentGeo = new THREE.ConeGeometry(1, 1, 7);
+      tentGeo.translate(0, 0.5, 0);
+      const mk = (color: number, n: number, zMin: number, zMax: number, glow: THREE.Color, fires: number) => {
+        const tents = new THREE.InstancedMesh(tentGeo, new THREE.MeshStandardMaterial({ color, roughness: 0.95 }), n);
+        const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), sc = new THREE.Vector3();
+        for (let i = 0; i < n; i++) {
+          const x = (r() - 0.5) * 70;
+          const z = zMin + r() * (zMax - zMin);
+          const w = 2.4 + r() * 1.6, h = 2.2 + r() * 1.6;
+          p.set(x, terrainY(x, z) - 0.1, z);
+          q.setFromEuler(e.set(0, r() * 6, 0));
+          m4.compose(p, q, sc.set(w, h, w));
+          tents.setMatrixAt(i, m4);
+        }
+        tents.castShadow = false;
+        g.add(tents);
+        for (let i = 0; i < fires; i++) {
+          const x = (r() - 0.5) * 66, z = zMin + r() * (zMax - zMin);
+          const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDotTexture(), color: glow, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: true }));
+          s.scale.setScalar(1.3 + r() * 1.1);
+          s.position.set(x, terrainY(x, z) + 0.4, z);
+          s.renderOrder = 12;
+          g.add(s);
+        }
+      };
+      mk(0x1e1612, 9, 22, 46, new THREE.Color(1.3, 0.42, 0.1), 12);      // Red camp (+Z, behind the player)
+      mk(0x14171e, 7, -58, -30, new THREE.Color(0.5, 0.3, 0.12), 8);   // Black camp (−Z): fewer, dimmer fires
     }
 
     /* braziers + flames */

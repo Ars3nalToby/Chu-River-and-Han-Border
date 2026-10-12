@@ -79,7 +79,7 @@ void main() {
   // elephant barrier shimmer
   if (uBarrier > 0.001) {
     float s = 0.5 + 0.5 * sin(vWorld.x * 7.0 - uTime * 3.0 + vnoise(vWorld.xz * 4.0) * 5.0);
-    col += vec3(0.25, 0.75, 1.0) * (0.35 + 0.65 * s) * uBarrier * 1.5;
+    col += vec3(0.2, 0.62, 0.9) * (0.3 + 0.7 * s) * uBarrier * 0.8;
   }
   gl_FragColor = vec4(col, alpha);
   #include <fog_fragment>

@@ -5,6 +5,7 @@ import { FONT_BRUSH, makeCanvas } from '../core/textures';
 import { fbm2, mulberry32, noise2 } from '../core/util';
 import { COLORS, GROUND_Y, WATER_HALF, sqX, sqZ } from '../core/constants';
 import { River } from './river';
+import { getSharedEnv } from './lighting';
 
 /* Layout (world units, top surface of the board = y 0) */
 export const SLAB_X = 4.75; // half-width of the wooden slab
@@ -210,8 +211,9 @@ export class Board {
     const wood = woodTexture();
 
     /* wooden slab: two halves with the river channel between */
-    const woodMat = new THREE.MeshStandardMaterial({
-      map: wood.map, bumpMap: wood.map, bumpScale: 0.7, roughness: 0.6, metalness: 0.02, envMapIntensity: 0.1,
+    const woodMat = new THREE.MeshPhysicalMaterial({
+      map: wood.map, bumpMap: wood.map, bumpScale: 0.7, roughness: 0.7, metalness: 0.02, specularIntensity: 0.35,
+      envMap: getSharedEnv(), envMapIntensity: 0.12,
     });
     const halfDepth = SLAB_Z - BANK_OUT;
     const makeHalf = (sign: 1 | -1) => {
@@ -328,7 +330,7 @@ export class Board {
         gold.push(lineBox(sqX(5), sqZ(r0), sqX(3), sqZ(r1), 0.03, 0.02));
       }
       this.goldMat = new THREE.MeshStandardMaterial({
-        color: COLORS.gold, roughness: 0.3, metalness: 0.85, emissive: new THREE.Color(COLORS.gold), emissiveIntensity: 0.55,
+        color: COLORS.gold, roughness: 0.3, metalness: 0.85, emissive: new THREE.Color(COLORS.gold), emissiveIntensity: 2.4,
       });
       g.add(new THREE.Mesh(mergeGeometries(gold)!, this.goldMat));
       gold.forEach((x) => x.dispose());

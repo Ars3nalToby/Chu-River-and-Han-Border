@@ -147,10 +147,17 @@ export class PieceView {
 
   dispose(): void {
     this.root.removeFromParent();
+    const procedural = !this.rig.mixer; // GLB clones share geometry with their siblings
     this.root.traverse((o) => {
       const m = o as THREE.Mesh;
-      // geometries / materials are shared & cached — only per-piece sprite materials are disposed
-      if ((o as THREE.Sprite).isSprite) (m.material as THREE.Material).dispose();
+      if ((o as THREE.Sprite).isSprite) {
+        (m.material as THREE.Material).dispose();
+      } else if (m.isMesh && procedural && this.rig.root.getObjectById(m.id)) {
+        // procedural warrior geometry is built per piece; discs / materials are shared & cached
+        m.geometry.dispose();
+        const mat = m.material as THREE.Material;
+        if (mat.userData.own) mat.dispose();
+      }
     });
   }
 }

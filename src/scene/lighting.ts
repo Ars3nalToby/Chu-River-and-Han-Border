@@ -27,26 +27,26 @@ export class Lighting {
   constructor(private gfx: Gfx) {
     const scene = gfx.scene;
 
-    scene.add(new THREE.AmbientLight(0x1a2236, 0.34));
-    scene.add(new THREE.HemisphereLight(0x33426a, 0x2a1a12, 0.2));
+    scene.add(new THREE.AmbientLight(0x1a2236, 0.2));
+    scene.add(new THREE.HemisphereLight(0x33426a, 0x2a1a12, 0.15));
 
     // Red side key: warm, behind Red at height ~5
-    this.redKey = new THREE.PointLight(0xffb066, 6.5 * LS * 3.6, 17, 1.3);
+    this.redKey = new THREE.PointLight(0xffb066, 6.5 * LS * 3.0, 17, 1.3);
     this.redKey.position.set(0, 5, 9.5);
     scene.add(this.redKey);
 
     // warm fill hugging the Red half so the firelit side reads orange even at the river
-    const redFill = new THREE.PointLight(0xff9a52, 11, 12, 1.5);
+    const redFill = new THREE.PointLight(0xff9a52, 16, 8.5, 1.4);
     redFill.position.set(0, 3.0, 3.6);
     scene.add(redFill);
 
     // Black side: cold moonlight directional + cool point
-    this.moon = new THREE.DirectionalLight(0x9db8ff, 1.2 * 1.5);
+    this.moon = new THREE.DirectionalLight(0x9db8ff, 1.2 * 1.35);
     this.moon.position.set(-5, 16, -18);
     this.moon.target.position.set(0, 0, -2);
     scene.add(this.moon, this.moon.target);
 
-    const blackFill = new THREE.PointLight(0x78a2ff, 12, 12, 1.5);
+    const blackFill = new THREE.PointLight(0x78a2ff, 20, 8.5, 1.4);
     blackFill.position.set(0, 3.0, -3.6);
     scene.add(blackFill);
 
@@ -55,7 +55,7 @@ export class Lighting {
     scene.add(this.blackPoint);
 
     // Main shadow caster — neutral so it does not flatten the warm/cool split
-    this.spot = new THREE.SpotLight(0xf4f4ff, 38, 48, 0.55, 0.6, 1.4);
+    this.spot = new THREE.SpotLight(0xfff4ea, 26, 48, 0.55, 0.6, 1.4);
     this.spot.position.set(1.5, 15, 4.5);
     this.spot.target.position.set(0, 0, 0);
     this.spot.castShadow = true;
@@ -115,6 +115,10 @@ export class Lighting {
  * Small procedural "studio": warm emissive panels on the Red side, cool on the Black side.
  * PMREM-filtered so lacquer clearcoat, bronze and gold have something to reflect.
  */
+let sharedEnv: THREE.Texture | null = null;
+/** the PMREM texture, for materials that need their own envMapIntensity (three ≥ r163 ignores it for scene.environment) */
+export const getSharedEnv = () => sharedEnv;
+
 export function buildEnvironmentMap(renderer: THREE.WebGLRenderer): THREE.Texture {
   const env = new THREE.Scene();
   env.background = new THREE.Color(0x03050a);
@@ -144,5 +148,6 @@ export function buildEnvironmentMap(renderer: THREE.WebGLRenderer): THREE.Textur
     m.geometry?.dispose();
     (m.material as THREE.Material | undefined)?.dispose();
   });
+  sharedEnv = rt.texture;
   return rt.texture;
 }

@@ -265,7 +265,7 @@ export function faceMaterial(type: number, side: 0 | 1, shift: Shift = 0): THREE
     const t = faceTextures(type, side, shift);
     m = new THREE.MeshPhysicalMaterial({
       map: t.map, bumpMap: t.bump, bumpScale: 2.2, emissiveMap: t.emissive,
-      emissive: new THREE.Color(0xffffff), emissiveIntensity: side === 0 ? 0.55 : 0.22,
+      emissive: new THREE.Color(0xffffff), emissiveIntensity: side === 0 ? 2.0 : 1.1,
       roughness: side === 0 ? 0.36 : 0.32, metalness: 0.04, clearcoat: 0.6, clearcoatRoughness: 0.24,
     });
     faceMats.set(key, m);

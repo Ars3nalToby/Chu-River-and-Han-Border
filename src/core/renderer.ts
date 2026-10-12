@@ -103,7 +103,7 @@ export class Gfx {
     c.addPass(new RenderPass(this.scene, this.camera));
 
     this.bloom = new BloomEffect({
-      intensity: 1.15, luminanceThreshold: 0.92, luminanceSmoothing: 0.25, mipmapBlur: true, radius: 0.72,
+      intensity: 1.0, luminanceThreshold: 1.0, luminanceSmoothing: 0.3, mipmapBlur: true, radius: 0.7,
     });
     this.bloomPass = new EffectPass(this.camera, this.bloom);
     c.addPass(this.bloomPass);
