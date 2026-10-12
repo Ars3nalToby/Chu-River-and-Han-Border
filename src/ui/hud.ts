@@ -57,6 +57,7 @@ export class Hud {
     this.root = root;
     setLang(settings.lang);
     this.muted = settings.muted;
+    this.panelCollapsed = window.matchMedia('(max-width: 760px), (max-height: 520px) and (orientation: landscape)').matches;
     this.stamp = new SealStamp(document.body);
     this.rebuild();
   }
@@ -168,8 +169,14 @@ export class Hud {
     const handle = h('div', 'sheet-handle');
     bar.appendChild(handle);
     handle.addEventListener('click', () => this.toggleSheet(bar));
+    // phones: the whole top strip of the sheet is a tap target
     bar.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).closest('.sheet-handle')) return;
+      if (!window.matchMedia('(max-width: 760px), (max-height: 520px) and (orientation: landscape)').matches) return;
+      const r = bar.getBoundingClientRect();
+      const inStrip = (e as MouseEvent).clientY - r.top < 30;
+      if (!this.toolbarOpen || inStrip) {
+        if (e.target === bar || e.target === handle) this.toggleSheet(bar);
+      }
     });
     const mk = (key: string, label: string, onClick: () => void, cls = '') => {
       const b = h('button', 'btn ' + cls, label);
@@ -191,6 +198,13 @@ export class Hud {
     g3.append(
       mk('hide', t('hideUi'), () => this.toggleHidden(true)),
       mk('settings', t('settings'), () => this.openSettings()),
+      mk('movesBtn', t('moves'), () => {
+        const p = this.refs.panel;
+        const open = !p.classList.contains('open-mobile');
+        p.classList.toggle('open-mobile', open);
+        p.classList.toggle('collapsed', !open);
+        this.panelCollapsed = !open;
+      }, 'mobile-only'),
       mk('mute', this.muted ? '🔇' : '🔊', () => {
         this.muted = !this.muted;
         this.settings.muted = this.muted;
@@ -220,7 +234,7 @@ export class Hud {
     hideable.appendChild(rb);
 
     /* move list */
-    const panel = h('div', 'movepanel' + (this.panelCollapsed ? ' collapsed' : ''));
+    const panel = h('div', 'movepanel' + (this.panelCollapsed ? ' collapsed' : ' open-mobile'));
     const header = h('header');
     const title = h('h3', '', t('moves'));
     const sel = h('select');
@@ -277,7 +291,7 @@ export class Hud {
     bar.classList.toggle('open', this.toolbarOpen);
   }
   private maybeCloseSheet(bar: El) {
-    if (window.matchMedia('(max-width: 760px)').matches) {
+    if (window.matchMedia('(max-width: 760px), (max-height: 520px) and (orientation: landscape)').matches) {
       this.toolbarOpen = false;
       bar.classList.remove('open');
     }

@@ -17,6 +17,7 @@ html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; col
 #ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; transition: opacity 0.35s; }
 #ui.hidden .hide-able { opacity: 0; pointer-events: none !important; }
 #ui .hide-able { transition: opacity 0.35s; }
+#ui.cine .hide-able { opacity: 0.18; pointer-events: none; }
 button { font-family: inherit; }
 
 /* ───────────── loading ───────────── */
@@ -149,6 +150,7 @@ button { font-family: inherit; }
 
 /* ───────────── mobile ───────────── */
 .sheet-handle { display: none; }
+.mobile-only { display: none; }
 @media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
   .pill { padding: 6px 14px; gap: 10px; }
   .pill .title { font-size: 22px; }
@@ -163,7 +165,8 @@ button { font-family: inherit; }
   .toast-wrap { bottom: 96px; }
   .hint-bar { display: none; }
 }
-@media (max-width: 480px) {
+@media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
+  .mobile-only { display: inline-block; }
   .movepanel { display: none; }
-  .movepanel.open-mobile { display: flex; top: 62px; right: 10px; }
+  .movepanel.open-mobile { display: flex; top: 62px; right: 10px; width: min(300px, 92vw); max-height: 46vh; }
 }

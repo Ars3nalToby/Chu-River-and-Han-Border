@@ -46,12 +46,16 @@ export class Lighting {
     this.moon.target.position.set(0, 0, -2);
     scene.add(this.moon, this.moon.target);
 
+    const blackFill = new THREE.PointLight(0x78a2ff, 12, 12, 1.5);
+    blackFill.position.set(0, 3.0, -3.6);
+    scene.add(blackFill);
+
     this.blackPoint = new THREE.PointLight(0x8fb6ff, 4 * LS * 3.4, 17, 1.2);
     this.blackPoint.position.set(0, 4.5, -9);
     scene.add(this.blackPoint);
 
     // Main shadow caster — neutral so it does not flatten the warm/cool split
-    this.spot = new THREE.SpotLight(0xfff0dc, 46, 48, 0.55, 0.6, 1.4);
+    this.spot = new THREE.SpotLight(0xf4f4ff, 38, 48, 0.55, 0.6, 1.4);
     this.spot.position.set(1.5, 15, 4.5);
     this.spot.target.position.set(0, 0, 0);
     this.spot.castShadow = true;

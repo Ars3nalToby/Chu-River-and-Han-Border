@@ -9,7 +9,13 @@ export const CAM_PRESETS: CamPreset[] = ['player', 'overhead', 'side', 'battlefi
 interface Shot { pos: THREE.Vector3; target: THREE.Vector3; fov: number }
 
 /** Presets are authored for a Red player; flipping rotates them 180° about the board's centre. */
-const BASE: Record<CamPreset, { pos: [number, number, number]; target: [number, number, number]; fov: number }> = {
+type Base = { pos: [number, number, number]; target: [number, number, number]; fov: number };
+/** portrait phones: steeper look-down and a wider lens so the 9×10 board fills the screen width */
+const PORTRAIT: Partial<Record<CamPreset, Base>> = {
+  player:   { pos: [0, 9.5, 12.5],  target: [0, 0.2, 0.4],  fov: 52 },
+  overhead: { pos: [0, 19.0, 3.0],  target: [0, 0, 0.3],    fov: 52 },
+};
+const BASE: Record<CamPreset, Base> = {
   player:      { pos: [0, 3.5, 11.8],    target: [0, 0.95, -2.0],  fov: 40 },
   overhead:    { pos: [0, 17.2, 3.1],    target: [0, 0, 0.35],     fov: 34 },
   side:        { pos: [-11.2, 3.1, 1.4], target: [0, 0.3, -0.3],   fov: 38 },
@@ -30,6 +36,7 @@ export class CameraRig {
   private baseFov = 38;
   /** set by the game; true while a scripted camera move should block user input */
   userLocked = false;
+  private userMoved = false;
 
   constructor(private camera: THREE.PerspectiveCamera, dom: HTMLElement, private sched: Scheduler) {
     const c = new OrbitControls(camera, dom);
@@ -44,6 +51,7 @@ export class CameraRig {
     c.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
     c.zoomSpeed = 0.8;
     this.controls = c;
+    c.addEventListener('start', () => { this.userMoved = true; });
     window.addEventListener('keydown', (e) => this.onKey(e, true));
     window.addEventListener('keyup', (e) => this.onKey(e, false));
     window.addEventListener('blur', () => this.keys.clear());
@@ -63,12 +71,13 @@ export class CameraRig {
   }
 
   private shotFor(p: CamPreset, aspect = this.camera.aspect): Shot {
-    const b = BASE[p];
+    const portrait = aspect < 0.9 ? PORTRAIT[p] : undefined;
+    const b = portrait ?? BASE[p];
     const s = this.flipped ? -1 : 1;
     const target = new THREE.Vector3(b.target[0] * s, b.target[1], b.target[2] * s);
     const pos = new THREE.Vector3(b.pos[0] * s, b.pos[1], b.pos[2] * s);
     // narrow (portrait) screens: pull back so the 9×10 board still fits
-    const k = aspect < 1.25 ? clamp(Math.pow(1.35 / aspect, 0.8), 1, 2.1) : 1;
+    const k = portrait ? clamp(0.9 / aspect, 0.9, 1.6) : aspect < 1.25 ? clamp(Math.pow(1.35 / aspect, 0.8), 1, 2.1) : 1;
     pos.sub(target).multiplyScalar(k).add(target);
     return { pos, target, fov: b.fov };
   }
@@ -94,6 +103,7 @@ export class CameraRig {
   /** 1.2s easeInOutCubic transition to a preset, orbiting around the target so it never cuts through the board */
   async goPreset(p: CamPreset, duration = 1.2): Promise<void> {
     this.preset = p;
+    this.userMoved = false;
     await this.moveTo(this.shotFor(p), duration);
   }
 
@@ -134,18 +144,21 @@ export class CameraRig {
   }
 
   /** cinematic capture framing: swing in on the exchange, hold, caller restores afterwards */
-  async frameAction(a: THREE.Vector3, b: THREE.Vector3, duration = 0.9): Promise<void> {
+  async frameAction(a: THREE.Vector3, b: THREE.Vector3, duration = 0.9, style: 'melee' | 'cannon' = 'melee'): Promise<void> {
     this.saved = this.currentShot();
     const mid = a.clone().add(b).multiplyScalar(0.5);
-    mid.y = 0.55;
+    mid.y = style === 'cannon' ? 1.1 : 0.55;
     const dir = b.clone().sub(a).setY(0);
     const len = Math.max(1, dir.length());
     dir.normalize();
     // camera on the side of the exchange, low and close
     const side = new THREE.Vector3(-dir.z, 0, dir.x);
     if (side.dot(this.camera.position.clone().sub(mid)) < 0) side.negate();
-    const pos = mid.clone().addScaledVector(side, 3.2 + len * 0.45).add(new THREE.Vector3(0, 1.9, 0));
-    await this.moveTo({ pos, target: mid, fov: 36 }, duration);
+    // the cannon shot is framed wide and higher so the whole parabola over the screen piece is in view
+    const dist = style === 'cannon' ? 4.6 + len * 0.8 : 3.3 + len * 0.5;
+    const height = style === 'cannon' ? 3.1 : 1.9;
+    const pos = mid.clone().addScaledVector(side, dist).add(new THREE.Vector3(0, height, 0));
+    await this.moveTo({ pos, target: mid, fov: style === 'cannon' ? 42 : 36 }, duration);
   }
 
   async restoreAfterAction(duration = 0.9): Promise<void> {
@@ -204,8 +217,7 @@ export class CameraRig {
 
   /** call on resize so portrait/landscape framing adapts */
   onAspectChange(): void {
-    if (!this.busy) {
-      // keep the user's orbit but re-apply the preset framing only if they have not touched the camera
-    }
+    // keep the user's own orbit; otherwise re-frame the preset for the new aspect (rotate / resize)
+    if (!this.busy && !this.userMoved) this.apply(this.shotFor(this.preset));
   }
 }

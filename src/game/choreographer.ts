@@ -29,6 +29,8 @@ export interface ChoreoCtx {
   baseTimeScale: () => number;
   /** the human's viewing side → which direction "up the board" is for effects */
   humanSide: () => Side;
+  /** dim the HUD during cinematic camera work */
+  onCinematic?: (on: boolean) => void;
 }
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -44,6 +46,16 @@ export class Choreographer {
     const d = wrapPi(yaw - from);
     if (Math.abs(d) < 0.01) return;
     await this.c.sched.tween(dur, (u) => p.setFacing(from + d * u), easeInOutQuad);
+  }
+
+  private cine(a: THREE.Vector3, b: THREE.Vector3, style: 'melee' | 'cannon'): Promise<void> {
+    this.c.onCinematic?.(true);
+    return this.c.rig.frameAction(a, b, 0.85, style);
+  }
+
+  private async uncine(): Promise<void> {
+    await this.c.rig.restoreAfterAction(0.9);
+    this.c.onCinematic?.(false);
   }
 
   private hitStop(real = 0.25, scale = 0.35): void {
@@ -183,7 +195,7 @@ export class Choreographer {
     const { sched, rig, settings } = this.c;
     const A = this.posOf(from), B = this.posOf(to);
     const cin = settings().cinematic;
-    const framing = cin ? rig.frameAction(A, B, 0.85) : Promise.resolve();
+    const framing = cin ? this.cine(A, B, 'melee') : Promise.resolve();
 
     // 1. attacker advances to just before the target
     const full = this.route(att.type, from, to);
@@ -206,7 +218,7 @@ export class Choreographer {
     const slide = this.c.sfx;
     slide.woodSlide(0.35, 0.8);
     await sched.tween(0.36, (u) => att.root.position.lerpVectors(stop, B, easeInOutCubic(u)));
-    const restore = cin ? rig.restoreAfterAction(0.9) : Promise.resolve();
+    const restore = cin ? this.uncine() : Promise.resolve();
     await this.settle(att, att.type === PT.Elephant);
     await restore;
   }
@@ -215,7 +227,7 @@ export class Choreographer {
     const { sched, rig, sfx, cannon, settings, fx } = this.c;
     const A = this.posOf(from), B = this.posOf(to);
     const cin = settings().cinematic;
-    const framing = cin ? rig.frameAction(A, B, 0.85) : Promise.resolve();
+    const framing = cin ? this.cine(A, B, 'cannon') : Promise.resolve();
     const dir = B.clone().sub(A).setY(0).normalize();
 
     // 1. the cannon turns to bear on the target
@@ -250,7 +262,7 @@ export class Choreographer {
     // 5. the cannon rolls up to the captured point
     await sched.wait(0.45);
     await this.travel(att, [att.root.position.clone(), B]);
-    const restore = cin ? rig.restoreAfterAction(0.9) : Promise.resolve();
+    const restore = cin ? this.uncine() : Promise.resolve();
     await this.settle(att);
     await restore;
   }

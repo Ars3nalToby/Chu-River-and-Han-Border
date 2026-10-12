@@ -8,7 +8,8 @@ import type { WarriorRig } from './warrior';
 import { createAnimator, createWarrior } from './provider';
 
 export const DISC_TOP = DISC_H + 0.014;
-const FACE_GEO = new THREE.CylinderGeometry(0.46, 0.46, 1.5, 12);
+const DISC_HIT_GEO = new THREE.CylinderGeometry(0.45, 0.45, 0.22, 16);
+const BODY_HIT_GEO = new THREE.CylinderGeometry(0.22, 0.26, 1.15, 10);
 const FACE_MAT = new THREE.MeshBasicMaterial({ visible: false });
 
 let nextId = 1;
@@ -20,7 +21,9 @@ export class PieceView {
   readonly disc: Disc;
   readonly rig: WarriorRig;
   readonly animator: IAnimator;
-  readonly hit: THREE.Mesh;
+  /** invisible picking proxies: a flat disc and a slim body — what you see is what you pick */
+  readonly hitDisc: THREE.Mesh;
+  readonly hitBody: THREE.Mesh;
   sq: number;
   /** current warrior yaw (0 faces −Z, i.e. toward Black) */
   facing: number;
@@ -42,10 +45,12 @@ export class PieceView {
     this.rig.root.rotation.y = this.facing;
     this.root.add(this.disc.root, this.rig.root);
     this.animator = createAnimator(this.rig, phase);
-    this.hit = new THREE.Mesh(FACE_GEO, FACE_MAT);
-    this.hit.position.y = 0.75;
-    this.hit.userData.pieceId = this.id;
-    this.root.add(this.hit);
+    this.hitDisc = new THREE.Mesh(DISC_HIT_GEO, FACE_MAT);
+    this.hitDisc.position.y = 0.1;
+    this.hitBody = new THREE.Mesh(BODY_HIT_GEO, FACE_MAT);
+    this.hitBody.position.set(0, DISC_TOP + 0.58, side === 0 ? this.rig.discOffsetZ : -this.rig.discOffsetZ);
+    this.hitDisc.userData.pieceId = this.hitBody.userData.pieceId = this.id;
+    this.root.add(this.hitDisc, this.hitBody);
     sqWorld(sq, this.root.position);
     this.lastPos.copy(this.root.position);
   }
@@ -59,6 +64,7 @@ export class PieceView {
   setClassic(on: boolean): void {
     this.classic = on;
     this.rig.root.visible = !on;
+    this.hitBody.visible = !on;
     this.refreshFace();
   }
 
@@ -77,6 +83,11 @@ export class PieceView {
     const statueAtCanvasBottom = this.side === 0 ? zero : !zero;
     return statueAtCanvasBottom ? -1 : 1;
   }
+  /** objects to raycast against when picking this piece */
+  get hitObjects(): THREE.Object3D[] {
+    return this.classic ? [this.hitDisc] : [this.hitDisc, this.hitBody];
+  }
+
   get faceKey(): string {
     return faceKey(this.type, this.side, this.faceShift());
   }

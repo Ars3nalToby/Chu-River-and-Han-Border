@@ -48,7 +48,7 @@ class GrainEffect extends Effect {
         float g = hash(uv * vec2(1920.0, 1080.0)) - 0.5;
         float lum = dot(inputColor.rgb, vec3(0.299, 0.587, 0.114));
         outputColor = vec4(inputColor.rgb + g * amount * (1.0 - lum * 0.6), inputColor.a);
-      }`, { blendFunction: BlendFunction.SET, uniforms: new Map<string, THREE.Uniform>([['time', new THREE.Uniform(0)], ['amount', new THREE.Uniform(0.035)]]) });
+      }`, { blendFunction: BlendFunction.SET, uniforms: new Map<string, THREE.Uniform>([['time', new THREE.Uniform(0)], ['amount', new THREE.Uniform(0.014)]]) });
   }
   update(_r: THREE.WebGLRenderer, _i: THREE.WebGLRenderTarget, dt: number) {
     (this.uniforms.get('time') as THREE.Uniform).value = (((this.uniforms.get('time') as THREE.Uniform).value as number) + dt * 7.3) % 100;

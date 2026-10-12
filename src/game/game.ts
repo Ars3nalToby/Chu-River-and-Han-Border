@@ -119,6 +119,7 @@ export class Game {
       sched: this.sched, loop: this.loop, lighting: this.lighting, fx: this.fx, shatter: this.shatter, cannon: this.cannon,
       trays: this.trays, rig: this.rig, sfx: this.sfx, settings: () => this.settings, baseTimeScale: () => this.baseScale,
       humanSide: () => this.humanSide,
+      onCinematic: (on) => document.getElementById('ui')?.classList.toggle('cine', on),
     });
 
     await warriorProviderReady(); // Track A: look for /models/*.glb, else procedural
@@ -263,7 +264,10 @@ export class Game {
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 8 || performance.now() - d.t > 600) return;
       this.onTap(e.clientX, e.clientY);
     });
-    window.addEventListener('resize', () => this.gfx.resize());
+    window.addEventListener('resize', () => {
+      this.gfx.resize();
+      this.rig?.onAspectChange();
+    });
   }
 
   private onKey(e: KeyboardEvent) {
@@ -283,7 +287,7 @@ export class Game {
     const ndc = new THREE.Vector2(((cx - rect.left) / rect.width) * 2 - 1, -((cy - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.gfx.camera);
     const hits: THREE.Object3D[] = [];
-    for (const p of this.pieces.values()) hits.push(p.hit);
+    for (const p of this.pieces.values()) hits.push(...p.hitObjects);
     const inter = this.raycaster.intersectObjects(hits, false);
     let pieceSq = -1;
     if (inter.length) {
@@ -740,6 +744,12 @@ export class Game {
       sched: this.sched,
       loop: this.loop,
       game: this,
+      project: (iccs: string, y = 0.3) => {
+        const sq = iccsToSqSafe(iccs);
+        const v = new THREE.Vector3((sq % 9) - 4, y, 4.5 - Math.floor(sq / 9)).project(this.gfx.camera);
+        const r = this.gfx.canvas.getBoundingClientRect();
+        return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height };
+      },
       loadFen: (f: string) => this.loadFen(f),
       board: this.board,
       setQuality: (q: Quality) => this.applySetting({ ...this.settings, quality: q }, 'quality'),
