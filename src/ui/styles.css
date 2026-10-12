@@ -1,0 +1,4 @@
+html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; }
+#app, #stage { position: fixed; inset: 0; }
+#loading { position: fixed; inset: 0; z-index: 50; background: #05070c; color: #c9a24a; display: grid; place-items: center; transition: opacity 0.8s; }
+#loading.done { opacity: 0; pointer-events: none; }
