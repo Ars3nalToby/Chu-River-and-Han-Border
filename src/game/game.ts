@@ -66,6 +66,7 @@ export class Game {
   private lowFpsSamples = 0;
   private lastShadow = 0;
   private sessionT = 0;
+  private fpsGuard = true;
 
   constructor(private container: HTMLElement) {
     this.settings = loadSettings();
@@ -75,6 +76,7 @@ export class Game {
     if (q.has('classic')) this.settings.classic = q.get('classic') !== '0';
     if (q.has('ai')) this.settings.vsAi = q.get('ai') !== '0';
     if (q.has('slow')) this.loop.maxDt = 0.5;
+    this.fpsGuard = q.get('guard') !== '0';
     setLang(this.settings.lang);
     this.gfx = new Gfx(container);
   }
@@ -203,7 +205,7 @@ export class Game {
     });
     // auto-drop to Low if the average FPS stays under 45 for 3 s
     this.loop.onFps = (fps) => {
-      if (this.sessionT < 5 || document.hidden || g.quality.name === 'low') {
+      if (!this.fpsGuard || this.sessionT < 5 || document.hidden || g.quality.name === 'low') {
         this.lowFpsSamples = 0;
         return;
       }

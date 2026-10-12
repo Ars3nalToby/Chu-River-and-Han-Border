@@ -118,6 +118,21 @@ src/
 * Geometries / materials are shared; character textures are generated once per (piece, side, orientation) and
   cached; fragments (chunks, disc halves, particles) are pooled or disposed.
 
+## What was verified (and how)
+
+* **Rules**: perft(1..4) exact, 32 unit tests, and a 200-position cross-check against Fairy-Stockfish.
+* **Notation**: canonical openings (炮二平五, 傌八進七, 馬8進7, 砲8平5, 前俥退一 …) and WXF.
+* **AI**: mate-in-one, wins hanging material, never returns an illegal move; Master beats Recruit as either
+  colour and General beats Captain in self-play; ≈ 0.4–0.45 M nodes/s in V8.
+* **Game flow in a real browser (headless Chromium, software GL)**: click-to-select / click-to-move, AI reply,
+  cannon capture over a screen piece, melee capture (strike → hit-stop → shatter), check stamp, checkmate →
+  general falls → scroll, replay, undo, side flip, classic mode, Ultra tier, mobile portrait + landscape,
+  production build + worker, Track A GLB detection (using a hand-built test GLB), console clean.
+* **Not verifiable here**: real-GPU frame rate. CPU-side per-frame work (all animators + effects) measures
+  ≈ 0.15 ms; one full frame is ≈ 600 draw calls for the main pass (+ the shadow pass, which only re-renders when
+  something moves). Headless software rendering runs at ~1–2 FPS, so the 60 fps / 45 fps-guard targets are by
+  design and budget, not by measurement.
+
 ## Known limitations
 
 * The perpetual-check / chase rules and the 60-move rule are not implemented (see above).
