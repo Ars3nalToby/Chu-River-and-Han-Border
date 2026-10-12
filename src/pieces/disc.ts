@@ -29,13 +29,15 @@ export interface FaceTextures {
 }
 
 const texCache = new Map<string, FaceTextures>();
+/** vertical shift of the carved character on its face: −1 toward the face's canvas-top, +1 toward its bottom, 0 centred */
+export type Shift = -1 | 0 | 1;
 let TEX_SIZE = 1024;
 export function setDiscTextureSize(px: number) {
   TEX_SIZE = px;
 }
 
-function faceTextures(type: number, side: 0 | 1): FaceTextures {
-  const key = `${type}:${side}:${TEX_SIZE}`;
+function faceTextures(type: number, side: 0 | 1, shift: Shift): FaceTextures {
+  const key = `${type}:${side}:${shift}:${TEX_SIZE}`;
   const hit = texCache.get(key);
   if (hit) return hit;
   const S = TEX_SIZE;
@@ -97,7 +99,7 @@ function faceTextures(type: number, side: 0 | 1): FaceTextures {
 
   /* carved character */
   const size = S * 0.58;
-  const cy = C - S * 0.04; // slightly toward the front (the warrior stands at the back)
+  const cy = C + shift * S * 0.07; // away from the statue, which stands on the other half of the disc
   const draw = (gg: CanvasRenderingContext2D, dx: number, dy: number, style: string, stroke = 0) => {
     gg.font = `${size}px ${FONT_BRUSH}`;
     gg.textAlign = 'center';
@@ -253,11 +255,14 @@ export function lacquerBody(side: 0 | 1): THREE.MeshPhysicalMaterial {
 }
 
 const faceMats = new Map<string, THREE.MeshPhysicalMaterial>();
-export function faceMaterial(type: number, side: 0 | 1): THREE.MeshPhysicalMaterial {
-  const key = `${type}:${side}:${TEX_SIZE}`;
+export function faceKey(type: number, side: 0 | 1, shift: Shift): string {
+  return `${type}:${side}:${shift}:${TEX_SIZE}`;
+}
+export function faceMaterial(type: number, side: 0 | 1, shift: Shift = 0): THREE.MeshPhysicalMaterial {
+  const key = faceKey(type, side, shift);
   let m = faceMats.get(key);
   if (!m) {
-    const t = faceTextures(type, side);
+    const t = faceTextures(type, side, shift);
     m = new THREE.MeshPhysicalMaterial({
       map: t.map, bumpMap: t.bump, bumpScale: 2.2, emissiveMap: t.emissive,
       emissive: new THREE.Color(0xffffff), emissiveIntensity: side === 0 ? 0.55 : 0.22,
@@ -277,20 +282,22 @@ export interface Disc {
   root: THREE.Group;
   /** the part that carries the character (rotated so text reads upright for the viewer) */
   face: THREE.Group;
+  /** the textured top mesh (its material is swapped when the character shift changes) */
+  top: THREE.Mesh;
 }
 
-export function createDisc(type: number, side: 0 | 1): Disc {
+export function createDisc(type: number, side: 0 | 1, shift: Shift = 0): Disc {
   const g = geometries();
   const root = new THREE.Group();
   const face = new THREE.Group();
   const body = new THREE.Mesh(g.body, lacquerBody(side));
   body.castShadow = true;
   body.receiveShadow = true;
-  const top = new THREE.Mesh(g.face, faceMaterial(type, side));
+  const top = new THREE.Mesh(g.face, faceMaterial(type, side, shift));
   top.receiveShadow = true;
   face.add(top);
   root.add(body, face);
-  return { root, face };
+  return { root, face, top };
 }
 
 /** Two half-discs for the "disc splits in two" capture beat. Origin at the bottom centre. */
@@ -306,6 +313,20 @@ export function createDiscHalves(type: number, side: 0 | 1): THREE.Group[] {
     return grp;
   };
   return [make(g.bodyA, g.faceA, g.cutA), make(g.bodyB, g.faceB, g.cutB)];
+}
+
+/** free face textures that no piece uses any more (after a re-skin: side flip, classic toggle…) */
+export function pruneFaceCache(inUse: Set<string>): void {
+  for (const [k, m] of faceMats) {
+    if (inUse.has(k)) continue;
+    m.dispose();
+    faceMats.delete(k);
+  }
+  for (const [k, t] of texCache) {
+    if (inUse.has(k)) continue;
+    t.map.dispose(); t.bump.dispose(); t.emissive.dispose();
+    texCache.delete(k);
+  }
 }
 
 /** Dispose cached GPU resources (used when texture resolution changes). */

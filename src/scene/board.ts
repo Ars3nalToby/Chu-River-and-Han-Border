@@ -211,7 +211,7 @@ export class Board {
 
     /* wooden slab: two halves with the river channel between */
     const woodMat = new THREE.MeshStandardMaterial({
-      map: wood.map, bumpMap: wood.map, bumpScale: 0.7, roughness: 0.55, metalness: 0.02, envMapIntensity: 0.6,
+      map: wood.map, bumpMap: wood.map, bumpScale: 0.7, roughness: 0.6, metalness: 0.02, envMapIntensity: 0.1,
     });
     const halfDepth = SLAB_Z - BANK_OUT;
     const makeHalf = (sign: 1 | -1) => {

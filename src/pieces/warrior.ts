@@ -50,8 +50,8 @@ interface Palette {
 const PAL: Palette[] = [
   // Red — terracotta #A65A3C with vermilion armour accents
   {
-    skin: c(0x9c6048), robe: c(0x95543a), armor: c(0x7d4430), accent: c(0x9e2a20), cloth: c(0x7a1c14),
-    hair: c(0x2e1d14), horse: c(0x8a4c32), wood: c(0x4c321e), stone: c(0x6e675d),
+    skin: c(0x8a6050), robe: c(0x7e5240), armor: c(0x634434), accent: c(0x93291f), cloth: c(0x6e1a13),
+    hair: c(0x2a1c14), horse: c(0x77503c), wood: c(0x4c321e), stone: c(0x6a645c),
   },
   // Black — dark bronze #2E2A24 with verdigris hints
   {
@@ -67,7 +67,7 @@ export function warriorMaterial(side: 0 | 1, slot: Slot): THREE.MeshStandardMate
     if (slot === 'statue') {
       matCache[key] = new THREE.MeshStandardMaterial(
         side === 0
-          ? { vertexColors: true, roughness: 0.75, metalness: 0.05 }
+          ? { vertexColors: true, roughness: 0.84, metalness: 0.04 }
           : { vertexColors: true, roughness: 0.46, metalness: 0.58 },
       );
     } else {
@@ -96,7 +96,10 @@ class Parts {
     for (let i = 0; i < n; i++) {
       // faint vertical shading so the statues feel baked-AO'd (darker low, lighter high)
       const y = g.attributes.position.getY(i);
-      const k = 0.88 + Math.min(0.2, Math.max(-0.1, y * 0.1));
+      const x = g.attributes.position.getX(i), z = g.attributes.position.getZ(i);
+      // weathering: low-frequency grime + faint baked vertical AO
+      const grime = 0.86 + 0.2 * (0.5 + 0.5 * Math.sin(x * 37.1 + y * 23.7) * Math.cos(z * 29.3 + y * 11.3));
+      const k = (0.86 + Math.min(0.2, Math.max(-0.1, y * 0.1))) * grime;
       col[i * 3] = tint.r * k; col[i * 3 + 1] = tint.g * k; col[i * 3 + 2] = tint.b * k;
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -376,7 +379,7 @@ function humanoid(side: 0 | 1, o: HumanoidOpts): Humanoid {
 
 /* ──────────────────────────── plinth ──────────────────────────── */
 
-function plinth(side: 0 | 1, r = 0.16): THREE.Mesh {
+function plinth(side: 0 | 1, r = 0.135): THREE.Mesh {
   const P = PAL[side];
   const p = new Parts();
   p.add('statue', lathe([[0.001, 0], [r + 0.01, 0], [r + 0.012, 0.012], [r, 0.022], [r - 0.01, 0.026], [0.001, 0.026]], 28), P.stone);
@@ -410,7 +413,7 @@ function buildGeneral(side: 0 | 1): WarriorRig {
   // two-handed grip: both arms forward-in, weapon point-down in front
   rig.height = 1.38;
   rig.attackStyle = 'overhead';
-  rig.discOffsetZ = 0.15;
+  rig.discOffsetZ = 0.25;
   return rig;
 }
 
@@ -422,6 +425,7 @@ function buildAdvisor(side: 0 | 1): WarriorRig {
   attachHumanoid(rig, h);
   rig.height = 1.22;
   rig.attackStyle = 'overhead';
+  rig.discOffsetZ = 0.25;
   return rig;
 }
 
@@ -432,6 +436,7 @@ function buildSoldier(side: 0 | 1): WarriorRig {
   rig.sway.add(plinth(side), h.group);
   attachHumanoid(rig, h);
   rig.height = 1.2;
+  rig.discOffsetZ = 0.25;
   return rig;
 }
 
@@ -490,7 +495,7 @@ function buildChariot(side: 0 | 1): WarriorRig {
   attachHumanoid(rig, h);
   rig.wheelRadius = 0.155;
   rig.height = 1.12;
-  rig.discOffsetZ = 0.06;
+  rig.discOffsetZ = 0.1;
   rig.attackStyle = 'charge';
   return rig;
 }
@@ -537,7 +542,7 @@ function buildHorse(side: 0 | 1): WarriorRig {
   rig.mount = mount;
   attachHumanoid(rig, h);
   rig.height = 1.2;
-  rig.discOffsetZ = 0.05;
+  rig.discOffsetZ = 0.1;
   rig.attackStyle = 'thrust';
   return rig;
 }
@@ -580,8 +585,9 @@ function buildElephant(side: 0 | 1): WarriorRig {
   }
   ep.add('statue', tube, gray);
   // caparison + howdah platform
-  ep.add('statue', box(0.34, 0.05, 0.42), P.accent, { p: [0, 0.6, 0.04] });
-  ep.add('metal', box(0.35, 0.012, 0.43), c(0xc9a24a), { p: [0, 0.628, 0.04] });
+  ep.add('statue', box(0.36, 0.04, 0.44), P.cloth, { p: [0, 0.6, 0.04] });
+  ep.add('metal', box(0.37, 0.01, 0.45), c(0x8f7330), { p: [0, 0.624, 0.04] });
+  for (const sz of [-1, 1]) ep.add('metal', box(0.38, 0.02, 0.012), c(0xc9a24a), { p: [0, 0.605, 0.04 + sz * 0.22] });
   ep.add('statue', box(0.02, 0.2, 0.42), P.cloth, { p: [-0.19, 0.5, 0.04] });
   ep.add('statue', box(0.02, 0.2, 0.42), P.cloth, { p: [0.19, 0.5, 0.04] });
   ep.add('metal', torus(0.06, 0.01, 6, 14), c(0xc9a24a), { p: [0, 0.36, -0.34], r: [Math.PI / 2, 0, 0] });
@@ -598,7 +604,7 @@ function buildElephant(side: 0 | 1): WarriorRig {
   rig.mount = mount;
   attachHumanoid(rig, h);
   rig.height = 1.18;
-  rig.discOffsetZ = 0.03;
+  rig.discOffsetZ = 0.08;
   rig.attackStyle = 'stomp';
   return rig;
 }
@@ -652,7 +658,7 @@ function buildCannon(side: 0 | 1): WarriorRig {
   attachHumanoid(rig, h);
   rig.wheelRadius = 0.14;
   rig.height = 0.95;
-  rig.discOffsetZ = 0.07;
+  rig.discOffsetZ = 0.1;
   rig.attackStyle = 'fire';
   return rig;
 }

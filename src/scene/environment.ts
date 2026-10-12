@@ -19,9 +19,11 @@ function ridgeTexture(seed: number, body: [number, number, number], rim: [number
   g.clearRect(0, 0, W, H);
   const ridge = (x: number, shift: number) => {
     const a = (x / W) * Math.PI * 2;
-    const n = fbm2(Math.cos(a) * freq + seed + shift, Math.sin(a) * freq + seed * 1.7, 5);
-    const peaks = Math.pow(n, 1.35);
-    return H * (0.86 - amp * peaks);
+    const n = fbm2(Math.cos(a) * freq + seed + shift, Math.sin(a) * freq + seed * 1.7, 6);
+    // ridged noise → pointed crests with long saddles, like ink-wash mountains
+    const ridged = 1 - Math.abs(n * 2 - 1);
+    const peaks = Math.pow(ridged, 2.2) * 0.75 + Math.pow(n, 1.6) * 0.35;
+    return H * (0.9 - amp * peaks);
   };
   // three offset washes → brushy edge
   for (let layer = 0; layer < 3; layer++) {
@@ -408,7 +410,7 @@ export class Environment {
 
     /* moon + halo */
     {
-      const dir = new THREE.Vector3(-0.3, 0.27, -0.92).normalize();
+      const dir = new THREE.Vector3(0.34, 0.2, -0.92).normalize();
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({
         map: softDotTexture(), color: new THREE.Color(0.38, 0.5, 0.85), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending,
       }));
@@ -431,9 +433,9 @@ export class Environment {
     /* mountains — three ink-wash cylinders, no scene fog (hand-tuned haze instead) */
     {
       const layers = [
-        { r: 300, h: 80, y: -4, seed: 3, body: [26, 38, 60] as [number, number, number], rim: [150, 180, 230] as [number, number, number], amp: 0.5, freq: 1.7, mist: [34, 48, 74] as [number, number, number], order: -6 },
-        { r: 230, h: 62, y: -4, seed: 11, body: [14, 22, 38] as [number, number, number], rim: [120, 150, 200] as [number, number, number], amp: 0.52, freq: 2.2, mist: [26, 38, 62] as [number, number, number], order: -5 },
-        { r: 165, h: 44, y: -3.5, seed: 29, body: [8, 13, 22] as [number, number, number], rim: [90, 120, 170] as [number, number, number], amp: 0.55, freq: 2.9, mist: [20, 30, 50] as [number, number, number], order: -4 },
+        { r: 300, h: 70, y: -4, seed: 3, body: [26, 38, 60] as [number, number, number], rim: [150, 180, 230] as [number, number, number], amp: 0.8, freq: 1.2, mist: [34, 48, 74] as [number, number, number], order: -6 },
+        { r: 230, h: 52, y: -4, seed: 11, body: [14, 22, 38] as [number, number, number], rim: [120, 150, 200] as [number, number, number], amp: 0.78, freq: 1.5, mist: [26, 38, 62] as [number, number, number], order: -5 },
+        { r: 165, h: 34, y: -3.5, seed: 29, body: [8, 13, 22] as [number, number, number], rim: [90, 120, 170] as [number, number, number], amp: 0.7, freq: 1.9, mist: [20, 30, 50] as [number, number, number], order: -4 },
       ];
       for (const L of layers) {
         const tex = ridgeTexture(L.seed, L.body, L.rim, L.amp, L.freq, L.mist);
@@ -628,7 +630,7 @@ export class Environment {
           vertexShader: `varying vec3 vN; varying vec3 vV; varying float vH;
             void main(){ vH = position.y / -15.0; vec4 mv = modelViewMatrix * vec4(position,1.0); vV = normalize(-mv.xyz); vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * mv; }`,
           fragmentShader: `uniform vec3 color; varying vec3 vN; varying vec3 vV; varying float vH;
-            void main(){ float f = pow(abs(dot(normalize(vN), normalize(vV))), 2.0); float a = f * (1.0 - vH) * 0.05 * smoothstep(0.0, 0.1, vH);
+            void main(){ float f = pow(abs(dot(normalize(vN), normalize(vV))), 2.0); float a = f * (1.0 - vH) * 0.016 * smoothstep(0.0, 0.1, vH);
               gl_FragColor = vec4(color * a * 2.0, a); }`,
         }),
       );
@@ -648,9 +650,10 @@ export class Environment {
           map: tex[i % 3], color: new THREE.Color(0.10, 0.13, 0.22), transparent: true, opacity: 0.16 + r() * 0.12, depthWrite: false, fog: true,
         }));
         const sc = 9 + r() * 12;
-        s.scale.set(sc * 1.6, sc * 0.5, 1);
-        const zz = (r() - 0.5) * 70;
-        s.position.set((r() - 0.5) * 90, GROUND_Y + 0.6 + r() * 1.2, zz);
+        s.scale.set(sc * 1.6, sc * 0.2, 1);
+        // keep the banks of mist out on the plain — never hovering over the board itself
+        const ang = r() * Math.PI * 2, rad = 14 + r() * 48;
+        s.position.set(Math.cos(ang) * rad, GROUND_Y + 0.3 + r() * 0.7, Math.sin(ang) * rad);
         s.renderOrder = 5;
         g.add(s);
         this.mist.push({ sprite: s, speed: 0.15 + r() * 0.3, baseX: s.position.x, span: 50 });

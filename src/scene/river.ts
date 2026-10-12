@@ -70,7 +70,7 @@ void main() {
     // foam at the banks
     float fn = fbm(vWorld.xz * 9.0 + vec2(-uTime * 0.5, uTime * 0.2));
     float foam = smoothstep(0.16 * uEdge, 0.0, edge - fn * 0.06) * 0.6;
-    col = mix(col, vec3(0.30, 0.38, 0.46), foam * (0.35 + 0.5 * fn));
+    col = mix(col, vec3(0.20, 0.27, 0.34), foam * (0.3 + 0.4 * fn));
   } else {
     float t = fbm(vWorld.xz * 3.0 - vec2(uTime * uFlowSpeed, 0.0));
     col = mix(vec3(0.015, 0.04, 0.06), vec3(0.08, 0.13, 0.2), t);

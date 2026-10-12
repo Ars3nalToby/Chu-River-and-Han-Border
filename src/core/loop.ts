@@ -14,6 +14,8 @@ type Listener = (f: FrameInfo) => void;
 /** Single requestAnimationFrame loop with a global time scale. */
 export class Loop {
   timeScale = 1;
+  /** upper bound on one frame's delta (seconds) */
+  maxDt = 0.1;
   private listeners: Listener[] = [];
   private last = 0;
   private time = 0;
@@ -37,7 +39,7 @@ export class Loop {
     const tick = (now: number) => {
       if (!this.running) return;
       requestAnimationFrame(tick);
-      const rawDt = Math.min(0.1, (now - this.last) / 1000);
+      const rawDt = Math.min(this.maxDt, (now - this.last) / 1000);
       this.last = now;
       const dt = rawDt * this.timeScale;
       this.time += dt;
