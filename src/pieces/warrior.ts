@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { PT } from '../game/rules';
+import { makeCanvas } from '../core/textures';
+import { fbm2, noise2 } from '../core/util';
 
 /**
  * Procedural stylised Qin-terracotta warriors (Track B).
@@ -50,8 +52,8 @@ interface Palette {
 const PAL: Palette[] = [
   // Red — terracotta #A65A3C with vermilion armour accents
   {
-    skin: c(0x8a6050), robe: c(0x7e5240), armor: c(0x634434), accent: c(0x93291f), cloth: c(0x6e1a13),
-    hair: c(0x2a1c14), horse: c(0x77503c), wood: c(0x4c321e), stone: c(0x6a645c),
+    skin: c(0x9b7556), robe: c(0x94694c), armor: c(0x7a5840), accent: c(0x9a3326), cloth: c(0x66190f),
+    hair: c(0x2a1c14), horse: c(0x8e5d40), wood: c(0x4c321e), stone: c(0x6a645c),
   },
   // Black — dark bronze #2E2A24 with verdigris hints
   {
@@ -60,6 +62,26 @@ const PAL: Palette[] = [
   },
 ];
 
+let grainTex: THREE.CanvasTexture | null = null;
+/** fine mottled grain so terracotta / bronze breaks up the light instead of reading as smooth plastic */
+function grainTexture(): THREE.CanvasTexture {
+  if (grainTex) return grainTex;
+  const S = 256;
+  const { c, g } = makeCanvas(S);
+  const img = g.createImageData(S, S);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const v = 120 + fbm2(x * 0.05, y * 0.05, 4) * 90 + (noise2(x * 0.9, y * 0.9) - 0.5) * 70;
+    const i = (y * S + x) * 4;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.max(0, Math.min(255, v)); img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  grainTex = new THREE.CanvasTexture(c);
+  grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
+  grainTex.repeat.set(1.3, 1.3);
+  grainTex.anisotropy = 4;
+  return grainTex;
+}
+
 const matCache: Record<string, THREE.Material> = {};
 export function warriorMaterial(side: 0 | 1, slot: Slot): THREE.MeshStandardMaterial {
   const key = `${side}${slot}`;
@@ -67,8 +89,8 @@ export function warriorMaterial(side: 0 | 1, slot: Slot): THREE.MeshStandardMate
     if (slot === 'statue') {
       matCache[key] = new THREE.MeshStandardMaterial(
         side === 0
-          ? { vertexColors: true, roughness: 0.84, metalness: 0.04 }
-          : { vertexColors: true, roughness: 0.46, metalness: 0.58 },
+          ? { vertexColors: true, roughness: 0.9, metalness: 0.02, bumpMap: grainTexture(), bumpScale: 0.9 }
+          : { vertexColors: true, roughness: 0.5, metalness: 0.55, bumpMap: grainTexture(), bumpScale: 0.7 },
       );
     } else {
       matCache[key] = new THREE.MeshStandardMaterial(
@@ -185,7 +207,7 @@ function humanoid(side: 0 | 1, o: HumanoidOpts): Humanoid {
     for (let i = 0; i < 3; i++) {
       const y = 0.3 + i * 0.075;
       st.add('statue', cyl(0.11 - i * 0.004, 0.14 - i * 0.004, 0.09, 14), i % 2 ? P.armor : P.robe, { p: [0, y, 0] });
-      st.add('metal', torus(0.14 - i * 0.004, 0.007, 6, 18), P.accent, { p: [0, y - 0.04, 0], r: [Math.PI / 2, 0, 0] });
+      st.add('statue', torus(0.14 - i * 0.004, 0.005, 5, 18), P.armor, { p: [0, y - 0.04, 0], r: [Math.PI / 2, 0, 0] });
     }
     // front apron
     st.add('statue', box(0.1, 0.21, 0.012), P.accent, { p: [0, 0.33, -0.132] });
@@ -204,25 +226,26 @@ function humanoid(side: 0 | 1, o: HumanoidOpts): Humanoid {
   st.add('metal', box(0.085, 0.17, 0.014), P.accent, { p: [0, waistY + 0.17, -0.098] });
   for (const k of [-1, 1]) st.add('metal', sph(0.011, 6, 5), c(0xc9a24a), { p: [k * 0.03, waistY + 0.22, -0.108] });
   // belt + buckle
-  st.add('metal', torus(0.108, 0.013, 6, 20), P.accent, { p: [0, waistY, 0], r: [Math.PI / 2, 0, 0], s: [1.12, 0.82, 1] });
+  st.add('statue', torus(0.108, 0.012, 6, 20), P.accent, { p: [0, waistY, 0], r: [Math.PI / 2, 0, 0], s: [1.12, 0.82, 1] });
   st.add('metal', box(0.04, 0.035, 0.012), c(0xc9a24a), { p: [0, waistY, -0.096] });
   // shoulders: pauldrons
   for (const sx of [-1, 1]) {
     st.add('statue', sph(0.062, 12, 8), P.armor, { p: [sx * 0.135, waistY + 0.335, 0], s: [1.05, 0.62, 1] });
-    st.add('metal', torus(0.058, 0.008, 5, 14), P.accent, { p: [sx * 0.135, waistY + 0.305, 0], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.7] });
+    st.add('statue', torus(0.058, 0.006, 5, 14), P.armor, { p: [sx * 0.135, waistY + 0.305, 0], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.7] });
   }
   // neck + gorget
-  st.add('statue', cyl(0.032, 0.036, 0.05, 10), P.skin, { p: [0, waistY + 0.385, 0] });
-  st.add('statue', torus(0.048, 0.016, 6, 14), P.accent, { p: [0, waistY + 0.37, 0], r: [Math.PI / 2, 0, 0] });
+  st.add('statue', cyl(0.032, 0.038, 0.09, 10), P.skin, { p: [0, waistY + 0.4, 0] });
+  st.add('statue', torus(0.048, 0.014, 6, 14), P.armor, { p: [0, waistY + 0.37, 0], r: [Math.PI / 2, 0, 0] });
 
   /* head — merged into the static body mesh (one draw call fewer per statue) */
   const head = new THREE.Group(); // kept for API symmetry; heads no longer pivot
   const hd = st;
-  hd.offset = [0, waistY + 0.5, 0];
+  hd.offset = [0, waistY + 0.465, 0];
   hd.add('statue', sph(0.058, 16, 12), P.skin, { s: [0.92, 1.1, 0.96] });
   // brow, nose, moustache — enough for a terracotta face
   hd.add('statue', box(0.075, 0.012, 0.02), P.hair, { p: [0, 0.02, -0.052] });
   hd.add('statue', box(0.014, 0.03, 0.02), P.skin, { p: [0, -0.003, -0.058] });
+  for (const sx of [-1, 1]) hd.add('statue', sph(0.008, 6, 5), P.hair, { p: [sx * 0.022, 0.008, -0.052], s: [1, 0.7, 0.6] });
   hd.add('statue', box(0.06, 0.01, 0.014), P.hair, { p: [0, -0.024, -0.054] });
   hd.add('statue', box(0.01, 0.018, 0.012), P.hair, { p: [0.02, -0.037, -0.05], r: [0, 0, 0.3] });
   hd.add('statue', box(0.01, 0.018, 0.012), P.hair, { p: [-0.02, -0.037, -0.05], r: [0, 0, -0.3] });
@@ -234,7 +257,7 @@ function humanoid(side: 0 | 1, o: HumanoidOpts): Humanoid {
       break;
     case 'cap':
       hd.add('statue', cyl(0.062, 0.066, 0.05, 14), P.armor, { p: [0, 0.04, 0] });
-      hd.add('metal', torus(0.064, 0.007, 5, 16), P.accent, { p: [0, 0.018, 0], r: [Math.PI / 2, 0, 0] });
+      hd.add('statue', torus(0.064, 0.006, 5, 16), P.armor, { p: [0, 0.018, 0], r: [Math.PI / 2, 0, 0] });
       hd.add('statue', sph(0.026, 8, 6), P.hair, { p: [0, 0.09, 0.004] });
       break;
     case 'tablet': // 長冠 — the long flat official's cap: reads clearly from above
@@ -343,11 +366,12 @@ function humanoid(side: 0 | 1, o: HumanoidOpts): Humanoid {
   if (o.cape) {
     cape = new THREE.Group();
     cape.position.set(0, waistY + 0.34, 0.07);
-    const geo = new THREE.PlaneGeometry(0.3, 0.62, 6, 10);
+    const geo = new THREE.PlaneGeometry(0.3, 0.62, 14, 12);
     const pa = geo.attributes.position;
     for (let i = 0; i < pa.count; i++) {
       const x = pa.getX(i), y = pa.getY(i);
-      pa.setZ(i, 0.035 * Math.cos(x * 10) + (1 - (y + 0.31) / 0.62) * 0.08);
+      const drop = 1 - (y + 0.31) / 0.62; // 0 at the neck, 1 at the hem
+      pa.setZ(i, 0.03 * drop * Math.cos(x * 34) + 0.012 * Math.cos(x * 15 + 1) + drop * 0.09 + Math.pow(Math.abs(x) / 0.15, 2) * 0.03);
     }
     geo.translate(0, -0.31, 0);
     geo.computeVertexNormals();
@@ -378,7 +402,7 @@ function humanoid(side: 0 | 1, o: HumanoidOpts): Humanoid {
   if (cape) bodyGroup.add(cape);
   g.add(bodyGroup);
   g.userData.bodyGroup = bodyGroup;
-  return { group: g, armR: R.arm, weaponR: R.weapon, armL: L.arm, head, cape, height: waistY + 0.62 };
+  return { group: g, armR: R.arm, weaponR: R.weapon, armL: L.arm, head, cape, height: waistY + 0.58 };
 }
 
 /* ──────────────────────────── plinth ──────────────────────────── */
@@ -555,7 +579,7 @@ function buildElephant(side: 0 | 1): WarriorRig {
   const rig = newRig(PT.Elephant);
   const P = PAL[side];
   const mount = new THREE.Group();
-  const gray = side === 0 ? c(0x8c7f72) : c(0x4e5258);
+  const gray = side === 0 ? c(0x7b7873) : c(0x4a4e55);
   const ep = new Parts();
   ep.add('statue', sph(0.2, 18, 14), gray, { p: [0, 0.42, 0.03], s: [0.95, 0.92, 1.45] });
   ep.add('statue', sph(0.14, 16, 12), gray, { p: [0, 0.48, -0.22] });

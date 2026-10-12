@@ -31,7 +31,7 @@ export class Lighting {
     scene.add(new THREE.HemisphereLight(0x33426a, 0x2a1a12, 0.15));
 
     // Red side key: warm, behind Red at height ~5
-    this.redKey = new THREE.PointLight(0xffb066, 6.5 * LS * 3.0, 17, 1.3);
+    this.redKey = new THREE.PointLight(0xffb066, 6.5 * LS * 2.2, 17, 1.3);
     this.redKey.position.set(0, 5, 9.5);
     scene.add(this.redKey);
 

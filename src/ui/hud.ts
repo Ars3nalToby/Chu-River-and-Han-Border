@@ -81,10 +81,16 @@ export class Hud {
     this.humanSide = s;
     if (this.refs.side) this.refs.side.textContent = s === 0 ? t('playBlack') : t('playRed');
   }
+  /** dim the buttons that cannot run while a move is animating */
   setBusy(b: boolean) {
     this.busy = b;
-    ['undo', 'newgame', 'side', 'ai'].forEach((k) => this.refs[k]?.toggleAttribute('disabled', false));
-    void b;
+    ['undo', 'newgame', 'side', 'ai'].forEach((k) => this.refs[k]?.toggleAttribute('disabled', b));
+  }
+  closeSettings() {
+    this.settingsModal?.classList.remove('show');
+  }
+  get settingsOpen() {
+    return !!this.settingsModal?.classList.contains('show');
   }
   setReplaying(on: boolean) {
     this.replaying = on;
@@ -269,12 +275,12 @@ export class Hud {
 
     /* end scroll */
     this.endLayer = h('div', 'scroll-layer');
-    this.root.parentElement?.querySelectorAll('.scroll-layer').forEach((n) => n.remove());
+    document.querySelectorAll('.scroll-layer').forEach((n) => n.remove());
     document.body.appendChild(this.endLayer);
 
     /* settings modal */
     this.settingsModal = h('div', 'modal');
-    this.root.parentElement?.querySelectorAll('.modal').forEach((n) => n.remove());
+    document.querySelectorAll('.modal').forEach((n) => n.remove());
     document.body.appendChild(this.settingsModal);
     this.settingsModal.addEventListener('click', (e) => {
       if (e.target === this.settingsModal) this.settingsModal.classList.remove('show');

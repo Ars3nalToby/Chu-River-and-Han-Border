@@ -276,8 +276,11 @@ export class Game {
     const k = e.key.toLowerCase();
     if (k === 'h') this.hud.toggleHidden();
     else if (k === 'escape') {
-      this.deselect();
-      this.hud.hideEnd();
+      if (this.hud.settingsOpen) this.hud.closeSettings();
+      else {
+        this.deselect();
+        this.hud.hideEnd();
+      }
     }
   }
 
