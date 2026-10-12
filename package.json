@@ -1,0 +1,25 @@
+{
+  "name": "chu-han-xiangqi",
+  "private": true,
+  "version": "0.1.0",
+  "description": "楚河漢界 · Night of Chu and Han — cinematic 3D Xiangqi",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:perft": "vitest run src/game/rules.test.ts"
+  },
+  "dependencies": {
+    "postprocessing": "^6.36.0",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "fairy-stockfish-nnue.wasm": "^1.1.12",
+    "typescript": "~5.6.3",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.8"
+  }
+}
