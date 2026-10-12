@@ -15,9 +15,11 @@ html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; col
 #app, #stage { position: fixed; inset: 0; }
 #stage canvas { touch-action: none; outline: none; }
 #ui { position: fixed; inset: 0; pointer-events: none; z-index: 10; transition: opacity 0.35s; }
-#ui.hidden .hide-able { opacity: 0; pointer-events: none !important; }
+#ui.hidden .hide-able { opacity: 0; }
+#ui.hidden .hide-able, #ui.hidden .hide-able * { pointer-events: none !important; }
 #ui .hide-able { transition: opacity 0.35s; }
-#ui.cine .hide-able { opacity: 0.18; pointer-events: none; }
+#ui.cine .hide-able { opacity: 0.18; }
+#ui.cine .hide-able, #ui.cine .hide-able * { pointer-events: none !important; }
 button { font-family: inherit; }
 
 /* ───────────── loading ───────────── */
