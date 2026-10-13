@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # strict type-check (also runs as part of `npm run build`, kept separate for a clearer failure)
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      # perft(1..4), rules unit tests, notation, AI search, and the Fairy-Stockfish oracle cross-check
+      - name: Tests
+        run: npm test
+
+      # production bundle incl. the AI web worker chunk
+      - name: Build
+        run: npm run build
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
