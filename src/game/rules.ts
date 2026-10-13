@@ -554,6 +554,28 @@ export class Position {
     return n;
   }
 
+  /** has the current position already occurred earlier in the game (same side to move)? */
+  isRepeat(): boolean {
+    const k = this.keys[this.keys.length - 1];
+    for (let i = this.keys.length - 3; i >= 0; i -= 2) if (this.keys[i] === k) return true;
+    return false;
+  }
+
+  /** all legal moves that capture */
+  legalCaptures(): Move[] {
+    const pseudo: Move[] = [];
+    this.genPseudo(pseudo);
+    const me = this.side;
+    const out: Move[] = [];
+    for (let i = 0; i < pseudo.length; i++) {
+      if (!this.board[pseudo[i] >> 7]) continue;
+      this.makeMove(pseudo[i]);
+      if (!this.inCheck(me)) out.push(pseudo[i]);
+      this.unmakeMove();
+    }
+    return out;
+  }
+
   result(): GameResult {
     if (this.countLegal() === 0) {
       // 困毙 (no legal moves) is a LOSS for the side to move, same as checkmate.
