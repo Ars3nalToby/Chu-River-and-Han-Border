@@ -34,7 +34,12 @@ jobs:
       - name: Build
         run: npx vite build
 
+      # enablement: true asks the action to enable Pages (Actions source) if it is not already.
+      # NB: the default GITHUB_TOKEN usually lacks permission for this; if the step still fails,
+      # enable it once in Settings → Pages → Source: GitHub Actions.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
