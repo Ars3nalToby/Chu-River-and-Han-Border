@@ -16,7 +16,7 @@ npm run build      # type-check + production build into dist/
 npm test           # rules / perft / notation / AI / oracle tests
 ```
 
-A GitHub Actions workflow (`.github/workflows/pages.yml`) runs the tests, builds, and deploys `dist/` to GitHub Pages
+A GitHub Actions workflow (`.github/workflows/pages.yml`) builds and deploys `dist/` to GitHub Pages (type-check and tests gate PRs in `ci.yml`)
 on every push to `main`. One-time setup: repository **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
 URL flags for debugging: `?q=low|high|ultra`, `?lang=zh|en`, `?ai=0` (two players), `?classic=1`,

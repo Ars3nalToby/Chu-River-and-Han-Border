@@ -18,7 +18,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -27,15 +27,12 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - run: npm ci --no-audit --no-fund --prefer-offline
 
-      # never publish a build whose rules / perft tests fail
-      - name: Tests
-        run: npm test
-
-      # vite.config.ts uses base './', so the site works under /<repo>/ without extra config
+      # Type-check and tests already gate every PR in ci.yml, so the deploy only bundles.
+      # vite.config.ts uses base './', so the site works under /<repo>/ without extra config.
       - name: Build
-        run: npm run build
+        run: npx vite build
 
       - uses: actions/configure-pages@v5
 
